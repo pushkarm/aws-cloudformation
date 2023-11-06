@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  SecurityGroups:    
+    Description: Security Groups
+    Type: CommaDelimitedList
+    ConstraintDescription: >-
+      Security Group to attach
+  Subnets:    
+    Description: Subnets
+    Type: CommaDelimitedList    
+    ConstraintDescription: >-
+      Subnet to attach    
+Resources:
+  LambdaRole:
+    Type: 'AWS::IAM::Role'
+    DeletionPolicy: "Delete"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'ec2:CreateNetworkInterface'
+                  - 'ec2:DescribeNetworkInterfaces'
+                  - 'ec2:DeleteNetworkInterface'
+                  - 'ec2:AssignPrivateIpAddresses'
+                  - 'ec2:UnassignPrivateIpAddresses'            
+                Resource: '*'
+  MyLambdaFunction:
+    Type: AWS::Lambda::Function
+    DeletionPolicy: "Delete"  
+    Properties:
+      Runtime: nodejs16.x
+      Role: !GetAtt LambdaRole.Arn
+      Handler: index.handler      
+      Code:
+        ZipFile: |          
+          exports.handler = async function(event) {
+            console.log("event:", event); 
+            return { code: 200, "msg": "success"};           
+          };
+      Description: Sample lambda function.      
+      VpcConfig:
+        SecurityGroupIds: !Ref SecurityGroups
+        SubnetIds: !Ref Subnets
